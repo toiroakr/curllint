@@ -19,7 +19,14 @@ name: lint
 #     lockfile itself, but a manual edit to package.json outside that script
 #     can leave it stale with no other check catching it — `npm ci` accepts a
 #     lockfile whose recorded top-level name/version disagrees with
-#     package.json, it only enforces the dependency graph.
+#     package.json, it only enforces the dependency graph. This also covers
+#     shell-ts-adapter/package.json: it's consumed by the root lockfile via a
+#     `file:` dependency, so a version bump there (e.g. a Renovate PR) can
+#     drift the root lockfile just like a direct edit to package.json.
+#   * cf/package-lock.json staying in sync with cf/package.json
+#     (`cf-lockfile-drift` job) — cf/ is a separate npm project (the Worker
+#     deploy tooling) with its own lockfile, so it needs the same check
+#     independently of the root one above.
 #
 # `lint` is a required status check, so the workflow must report a check run
 # on every PR — a trigger-level `paths:` filter would leave non-matching PRs
@@ -45,6 +52,9 @@ on:
       - scripts/lib/**
       - package.json
       - package-lock.json
+      - shell-ts-adapter/package.json
+      - cf/package.json
+      - cf/package-lock.json
 
 # Default to no privileges; each job opts into exactly what it needs.
 permissions: {}
@@ -59,6 +69,7 @@ jobs:
     outputs:
       relevant: ${{ steps.filter.outputs.relevant }}
       lockfile: ${{ steps.filter.outputs.lockfile }}
+      cfLockfile: ${{ steps.filter.outputs.cfLockfile }}
     steps:
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -77,6 +88,12 @@ jobs:
             lockfile:
               - 'package.json'
               - 'package-lock.json'
+              # shell-ts-adapter is pulled into the root lockfile via a
+              # `file:` dependency — see the comment atop this workflow.
+              - 'shell-ts-adapter/package.json'
+            cfLockfile:
+              - 'cf/package.json'
+              - 'cf/package-lock.json'
 
   lint:
     needs: changes
@@ -177,5 +194,38 @@ jobs:
         run: |
           if ! git diff --exit-code package-lock.json; then
             echo "::error::package-lock.json is out of sync with package.json (see diff above). Run 'npm install --package-lock-only --ignore-scripts' and commit the result."
+            exit 1
+          fi
+
+  # Mirrors lockfile-drift above, but for cf/ — a separate npm project (the
+  # Worker deploy tooling) with its own package.json/package-lock.json, not
+  # covered by the root check.
+  cf-lockfile-drift:
+    needs: changes
+    if: >-
+      ${{ !cancelled()
+      && (github.event_name != 'pull_request'
+          || needs.changes.outputs.cfLockfile != 'false') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+
+      - working-directory: cf
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Check cf/package-lock.json is in sync with cf/package.json
+        run: |
+          if ! git diff --exit-code cf/package-lock.json; then
+            echo "::error::cf/package-lock.json is out of sync with cf/package.json (see diff above). Run 'npm install --package-lock-only --ignore-scripts' in cf/ and commit the result."
             exit 1
           fi
