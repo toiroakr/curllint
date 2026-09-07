@@ -137,11 +137,10 @@ THIS SOFTWARE.
 
 `web-tree-sitter` (the WASM runtime) and its `web-tree-sitter.wasm` engine are
 bundled into the Worker artifact (`cf/`) to parse `run:` shell script bodies
-for the shell rules added in #113 — see `shell-ts-adapter/`. `web-tree-sitter`
-is patched locally (`patches/web-tree-sitter+0.26.12.patch`, applied via
-`patch-package` on `npm install`) to let `Language.load` accept a precompiled
-`WebAssembly.Module`, which workerd requires since it forbids compiling WASM
-from raw bytes at runtime; the patch does not change the upstream license.
+for the shell rules added in #113 — see `shell-ts-adapter/`. It is used
+unmodified (no local patch): `Language.loadSync` (added upstream in 0.27.0)
+accepts a precompiled `WebAssembly.Module` directly, which workerd requires
+since it forbids compiling WASM from raw bytes at runtime.
 
 ```
 The MIT License (MIT)
