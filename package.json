@@ -16,12 +16,10 @@
     "changeset": "changeset",
     "sync-version": "node scripts/sync-moon-version.mjs",
     "version-packages": "changeset version && npm run sync-version && npm install --package-lock-only && moon info",
-    "postinstall": "patch-package",
     "test:shell-rules": "moon build --target js --release && node scripts/test-shell-rules.mjs"
   },
   "dependencies": {
-    "@karinto/shell-ts-adapter": "file:./shell-ts-adapter",
-    "patch-package": "^8.0.1"
+    "@karinto/shell-ts-adapter": "file:./shell-ts-adapter"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.0",
