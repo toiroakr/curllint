@@ -126,12 +126,12 @@ export async function ensureInitWorkerd(ttsModule, bashModule) {
     if (processMutated) globalThis.process = savedProcess;
   }
   await initPromise;
-  // Requires the root patch-package patch (see patches/) adding a
-  // `WebAssembly.Module` branch to `Language.load` — its public API only
-  // natively accepts `Uint8Array` (raw bytes, forbidden here) or a
-  // path/URL to `fetch`/`readFile` (neither meaningful for a bundled
-  // Module import).
-  const Bash = await Language.load(bashModule);
+  // `loadSync` (added in web-tree-sitter 0.27.0) accepts an
+  // already-compiled `WebAssembly.Module` directly, synchronously — unlike
+  // `load()`, which only natively accepts `Uint8Array` (raw bytes,
+  // forbidden here) or a path/URL to `fetch`/`readFile` (neither
+  // meaningful for a bundled Module import).
+  const Bash = Language.loadSync(bashModule);
   afterReady(Bash);
 }
 
