@@ -49,12 +49,13 @@ scope, so we lazy-`import()` inside the `fetch` handler.
 The tree-sitter-bash shell rules (#113) work the same way, via
 `getShellTs()` next to `getWorker()`: `shell-ts-adapter/` (root
 `node_modules`, `npm install` at the repo root — not just `cd cf`) does the
-async `Parser.init()`/`Language.load()` setup, awaited alongside `getWorker()`
-before the first lint call. The Workerd path uses `Language.loadSync`
-(`web-tree-sitter` >= 0.27.0) so it accepts a precompiled `WebAssembly.Module`
-directly — workerd forbids compiling WASM from raw bytes at runtime, so the
-two `.wasm` files are wrangler's native `.wasm` imports (compiled at
-deploy/bundle time), not bytes read at request time.
+async `Parser.init()` setup (plus the Node-only async `Language.load()`),
+awaited alongside `getWorker()` before the first lint call. The Workerd path
+instead uses the synchronous `Language.loadSync` (`web-tree-sitter` >= 0.27.0)
+so it accepts a precompiled `WebAssembly.Module` directly — workerd forbids
+compiling WASM from raw bytes at runtime, so the two `.wasm` files are
+wrangler's native `.wasm` imports (compiled at deploy/bundle time), not bytes
+read at request time.
 
 Run locally:
 
